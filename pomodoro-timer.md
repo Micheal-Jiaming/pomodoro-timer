@@ -218,7 +218,14 @@ move to GitHub.
 | Major — new or changed functionality | +0.1 | 1.0.0 → 1.1.0 |
 | Minor — fixes, docs, small tweaks | +0.0.1 | 1.0.0 → 1.0.1 |
 
-Edit `VERSION` in the same commit as the change, then tag and mirror:
+**One bump per task, however many commits it takes** — not one per commit. A
+task that edits code and then updates this document is a single version; write
+the new number into `VERSION` in the task's last commit and tag there. Documented
+changes are never exempt: this file is what a later session works from, so a
+wrong line in it is a defect like any other. The rule is deliberately mechanical,
+because a rule needing judgement gets applied differently by every session.
+
+Then tag and push both remotes:
 
 ```powershell
 git -C "D:\claude\Pomodoro timer" commit -am "..."
