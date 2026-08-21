@@ -182,11 +182,17 @@ renaming the file or logging out refreshes it.
 
 ## Version control
 
-This project is its own Git repository: `git init` in `D:\claude\Pomodoro timer`,
-with a bare mirror at `D:\claude\repos\pomodoro-timer.git` registered as
-`origin`. The repository name matches this document's filename
-(`pomodoro-timer`); the folder keeps its own name because the rebuild commands
-above refer to it by absolute path.
+This project is its own Git repository, with two remotes:
+
+| Remote | Points at |
+|---|---|
+| `origin` | `https://github.com/Micheal-Jiaming/pomodoro-timer` — private |
+| `mirror` | `D:\claude\repos\pomodoro-timer.git` — local bare copy |
+
+The repository name matches this document's filename (`pomodoro-timer`); the
+folder keeps its own name because the rebuild commands above refer to it by
+absolute path. Authentication is the GitHub CLI acting as git's credential
+helper (`gh auth setup-git`), so pushes need no interactive prompt.
 
 Tracked: `pomodoro_timer.py`, `make_icon.py`, `build_exe.ps1`,
 `pomodoro_timer.ico`, and this document. Ignored: `dist\` and `__pycache__\` —
@@ -195,11 +201,13 @@ source does. `.gitattributes` sets `* -text` so every file is stored and checked
 out byte for byte; Git for Windows is configured `core.autocrlf=true`
 system-wide and would otherwise rewrite these LF files to CRLF.
 
-The Android port is a **separate** repository, mirrored at
-`D:\claude\repos\Pomodoro timer Android.git`; the two version independently.
+The Android port is a **separate** repository
+(`github.com/Micheal-Jiaming/Pomodoro-timer-Android`, mirrored at
+`D:\claude\repos\Pomodoro timer Android.git`); the two version independently.
 
 **Versioning.** `VERSION` holds the current number; every release is tagged
-`v<number>`. The baseline is **1.0.0**, tagged `v1.0.0`.
+`v<number>`. The baseline is **1.0.0**, tagged `v1.0.0`; **1.0.1** recorded the
+move to GitHub.
 
 | Update | Bump | Example |
 |---|---|---|
@@ -210,8 +218,9 @@ Edit `VERSION` in the same commit as the change, then tag and mirror:
 
 ```powershell
 git -C "D:\claude\Pomodoro timer" commit -am "..."
-git -C "D:\claude\Pomodoro timer" tag -a v1.0.1 -m "..."
+git -C "D:\claude\Pomodoro timer" tag -a v1.0.2 -m "..."
 git -C "D:\claude\Pomodoro timer" push origin main --tags
+git -C "D:\claude\Pomodoro timer" push mirror main --tags
 ```
 
 ## Implementation notes
