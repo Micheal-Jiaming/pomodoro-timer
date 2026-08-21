@@ -12,13 +12,16 @@ self-contained `.exe`.
 
 ```
 D:\claude\Pomodoro timer\
-├── pomodoro_timer.py       source (single file, ~40 KB)
+├── pomodoro_timer.py       source (single file, 930 lines / ~40 KB)
 ├── pomodoro_timer.ico      app icon — a tomato with a countdown ring
 ├── make_icon.py            redraws the icon (needs Pillow)
 ├── build_exe.ps1           rebuild script
 ├── pomodoro-timer.md       this document
+├── VERSION                 current version number — see Version control
+├── .gitignore              keeps dist\ and caches out of git
+├── .gitattributes          stores every file byte for byte
 └── dist\
-    └── PomodoroTimer.exe   standalone build, ~10 MB
+    └── PomodoroTimer.exe   standalone build, ~10 MB — not in git, rebuild it
 ```
 
 ## Using it
@@ -140,7 +143,8 @@ double-click. Python, Tkinter, and the icon are bundled inside.
 
 There is a port at `D:\claude\Pomodoro timer Android` — Kotlin and Jetpack Compose, same
 timer, same three palettes, same end-of-countdown prompts. The built app is at
-`Pomodoro timer Android\dist\PomodoroTimer-debug.apk`; drag it onto an emulator, or
+`Pomodoro timer Android\dist\PomodoroTimer-debug.apk` on this machine — it is not
+in version control, so a fresh clone has to build it; drag it onto an emulator, or
 `adb install` it. Its `Pomodoro timer Android.md` covers rebuilding.
 
 The timer came across whole, including the drift-free deadline and the three 880 Hz beeps.
