@@ -12,7 +12,7 @@ self-contained `.exe`.
 
 ```
 D:\claude\Pomodoro timer\
-├── pomodoro_timer.py       source (single file, 930 lines / ~40 KB)
+├── pomodoro_timer.py       source (single file, 1059 lines / ~40 KB)
 ├── pomodoro_timer.ico      app icon — a tomato with a countdown ring
 ├── make_icon.py            redraws the icon (needs Pillow)
 ├── build_exe.ps1           rebuild script
