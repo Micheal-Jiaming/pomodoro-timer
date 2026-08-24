@@ -210,8 +210,9 @@ The Android port is a **separate** repository
 `D:\claude\repos\Pomodoro timer Android.git`); the two version independently.
 
 **Versioning.** `VERSION` holds the current number; every release is tagged
-`v<number>`. The baseline is **1.0.0**, tagged `v1.0.0`; **1.0.1** recorded the
-move to GitHub.
+`v<number>`. The baseline was **1.0.0**. This document deliberately does not list
+the releases since — `git tag` and `git log VERSION` are the record, and an
+enumeration here would be one release stale the moment the next one ships.
 
 | Update | Bump | Example |
 |---|---|---|
@@ -229,7 +230,7 @@ Then tag and push both remotes:
 
 ```powershell
 git -C "D:\claude\Pomodoro timer" commit -am "..."
-git -C "D:\claude\Pomodoro timer" tag -a v1.0.2 -m "..."
+git -C "D:\claude\Pomodoro timer" tag -a v$(cat VERSION) -m "..."
 git -C "D:\claude\Pomodoro timer" push origin main --tags
 git -C "D:\claude\Pomodoro timer" push mirror main --tags
 ```
