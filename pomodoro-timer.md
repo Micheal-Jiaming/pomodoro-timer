@@ -351,15 +351,16 @@ re-check rather than assume.
   target ratio, so the aspect maths itself is unchanged.
 - `build_exe.ps1` rebuilds cleanly. The resulting standalone build is ~10 MB, and it
   launches and stays running.
+- **Interactive dragging still works** — confirmed by hand on Windows 11 after the
+  change. This is the check that matters for this release, because the new validation
+  sits directly in the resize path: a unit test can say the rectangles are accepted, but
+  only a real drag proves the aspect lock still holds the window in proportion.
 
 **Not verified — check these by hand before trusting them.**
 
-- **Dragging the window has not been re-tested interactively.** The new validation sits
-  directly in the resize path, and while the unit test says it accepts every plausible
-  rectangle, only an actual drag on a real window proves the aspect lock still behaves.
-  Resize the window by a side and by a corner; the other dimension should follow live.
 - Multi-monitor drags, and dragging onto a monitor with a different DPI, are untested
-  against the new bounds check.
+  against the new bounds check. The slack around the virtual desktop is 4096 px, which
+  should absorb both, but that is reasoning rather than evidence.
 - The rebuilt exe was launched and closed, not exercised: no countdown was run to
   completion, no theme switched, no size lock toggled in this build.
 
