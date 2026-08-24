@@ -131,6 +131,15 @@ EDGE_LEFT = frozenset((1, 4, 7))        # LEFT, TOPLEFT, BOTTOMLEFT
 EDGE_TOP = frozenset((3, 4, 5))         # TOP, TOPLEFT, TOPRIGHT
 EDGE_SIDE = frozenset((1, 2))           # LEFT, RIGHT — height follows width
 EDGE_UPDOWN = frozenset((3, 6))         # TOP, BOTTOM — width follows height
+# WMSZ_* only ever runs 1..8. A WM_SIZING carrying anything else did not come
+# from the drag loop, so its lparam is not a rectangle we should write through.
+EDGE_VALID = frozenset(range(1, 9))
+# GetSystemMetrics indices for the box spanning every monitor.
+SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN = 76, 77
+SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN = 78, 79
+# Slack around that box, in px. A real drag can push a frame well off-screen,
+# so this has to be generous or the check would fight ordinary resizing.
+SCREEN_SLACK = 4096
 
 
 class AspectLock:
@@ -255,20 +264,56 @@ class AspectLock:
         except Exception:
             return False
 
+    def _plausible(self, rect):
+        """True when a proposed rectangle looks like one the drag loop sent.
+
+        `rect` reaches us as a raw pointer in the message's lparam, so its
+        contents are only as trustworthy as whoever posted the message. Before
+        writing four LONGs back through that pointer, check the rectangle is
+        non-degenerate and lands somewhere on the desktop. A rectangle far
+        outside it means the pointer did not come from a real resize, and the
+        right response is to refuse rather than to clamp it into range: a wrong
+        pointer is a bug or a forged message, not a small numerical error.
+
+        Returns False if the desktop bounds cannot be read at all, since an
+        unverifiable rectangle should not be trusted either.
+        """
+        try:
+            metric = self._user32.GetSystemMetrics
+            left = metric(SM_XVIRTUALSCREEN) - SCREEN_SLACK
+            top = metric(SM_YVIRTUALSCREEN) - SCREEN_SLACK
+            right = left + metric(SM_CXVIRTUALSCREEN) + 2 * SCREEN_SLACK
+            bottom = top + metric(SM_CYVIRTUALSCREEN) + 2 * SCREEN_SLACK
+        except Exception:
+            return False
+        # A zero or inverted extent is never something the drag loop proposes.
+        if rect.right <= rect.left or rect.bottom <= rect.top:
+            return False
+        return (left <= rect.left and rect.right <= right
+                and top <= rect.top and rect.bottom <= bottom)
+
     # -- the window procedure -------------------------------------------
     def _dispatch(self, hwnd, msg, wparam, lparam):
         result = self._user32.CallWindowProcW(
             self._old_proc, hwnd, msg, wparam, lparam
         )
         self._calls += 1
-        if msg == WM_SIZING and self.ratio > 0:
+        # `int(wparam) in EDGE_VALID` gates the cast below. This window
+        # procedure is reachable by any process that can SendMessage to our
+        # hwnd, and the WM_SIZING branch writes through a caller-supplied
+        # pointer, so both the edge code and the rectangle are validated before
+        # anything is written. Same-session, equal-or-higher integrity is
+        # required to send at all, so this is defence in depth rather than a
+        # remotely reachable hole - but it is four arbitrary writes otherwise.
+        if msg == WM_SIZING and self.ratio > 0 and int(wparam) in EDGE_VALID:
             self._sizing_calls += 1
             try:
                 rect = self._ctypes.cast(
                     lparam, self._ctypes.POINTER(self._rect_type)
                 ).contents
-                self._constrain(int(wparam), rect)
-                return 1  # TRUE: the rectangle was adjusted
+                if self._plausible(rect):
+                    self._constrain(int(wparam), rect)
+                    return 1  # TRUE: the rectangle was adjusted
             except Exception as exc:
                 self._last_error = repr(exc)
         return result

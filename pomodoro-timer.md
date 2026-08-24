@@ -12,7 +12,7 @@ self-contained `.exe`.
 
 ```
 D:\claude\Pomodoro timer\
-├── pomodoro_timer.py       source (single file, 1059 lines / ~40 KB)
+├── pomodoro_timer.py       source (single file, 1104 lines / ~42 KB)
 ├── pomodoro_timer.ico      app icon — a tomato with a countdown ring
 ├── make_icon.py            redraws the icon (needs Pillow)
 ├── build_exe.ps1           rebuild script
@@ -272,6 +272,18 @@ git -C "D:\claude\Pomodoro timer" push mirror main --tags
   side then moves the other live, with no snapping after the fact. Side drags take their
   height from the width, top/bottom drags take their width from the height, and only the
   edges the user isn't holding are moved, so the anchored corner stays put.
+- **The `WM_SIZING` branch validates its input before writing** (added in 1.0.5). That
+  message carries a `RECT*` in its `lparam`, and the handler writes four `LONG`s back
+  through it — so it is one of the few places in this app that writes to an address it
+  did not compute. Any process able to `SendMessage` to the window could otherwise place
+  those writes. Two gates now stand in front of it: the edge code must be a real `WMSZ_*`
+  value (1–8, `EDGE_VALID`), and `_plausible()` must accept the rectangle — non-degenerate
+  and inside the virtual desktop plus 4096 px of slack, generous enough that a legitimate
+  drag well off-screen still passes. A rectangle that fails is refused outright rather
+  than clamped, because a wrong pointer is a forged message or a bug, not a small
+  numerical error. This is defence in depth, not a remotely reachable hole: sending the
+  message at all requires a same-session process at equal or higher integrity, which is
+  an attacker who could edit this source file anyway.
 - **The hooked window is not the one Tk starts with.** A toplevel's real window is created
   when it is mapped, and Tk throws it away and rebuilds it for some `wm` calls —
   `-topmost`, which this app toggles, among them. `attach()` re-subclasses whenever the
@@ -322,3 +334,35 @@ git -C "D:\claude\Pomodoro timer" push mirror main --tags
 - The main class is `PomodoroTimer`; `Popup` builds the end-of-countdown dialogs and
   `AspectLock` holds the window to its proportions while it is being dragged.
 - Built and tested with Python 3.13 and PyInstaller 6.21 on Windows 11.
+
+## Verification status
+
+Where 1.0.5 stands, so a later session knows what it can rely on and what it should
+re-check rather than assume.
+
+**Verified.**
+
+- Both source files compile (`py -m py_compile`).
+- `make_icon.py` runs and writes an `.ico` **byte-identical** to the previous one, which
+  is what proves that release's edits to it were comments only.
+- `_plausible()` and the `EDGE_VALID` gate pass a 13-case unit test: legitimate drag
+  rectangles are accepted — including ones pushed well off-screen — while degenerate,
+  inverted and far-out-of-range rectangles are refused. `_constrain()` still produces the
+  target ratio, so the aspect maths itself is unchanged.
+- `build_exe.ps1` rebuilds cleanly. The resulting standalone build is ~10 MB, and it
+  launches and stays running.
+
+**Not verified — check these by hand before trusting them.**
+
+- **Dragging the window has not been re-tested interactively.** The new validation sits
+  directly in the resize path, and while the unit test says it accepts every plausible
+  rectangle, only an actual drag on a real window proves the aspect lock still behaves.
+  Resize the window by a side and by a corner; the other dimension should follow live.
+- Multi-monitor drags, and dragging onto a monitor with a different DPI, are untested
+  against the new bounds check.
+- The rebuilt exe was launched and closed, not exercised: no countdown was run to
+  completion, no theme switched, no size lock toggled in this build.
+
+The previous hand-verified binary (v1.0.4) is **not** recoverable from Git, because
+`dist\` is deliberately ignored. If the new build misbehaves, rebuild from tag `v1.0.4`
+rather than expecting a checkout to restore the exe.
