@@ -17,12 +17,40 @@ D:\claude\Pomodoro timer\
 ├── make_icon.py            redraws the icon (needs Pillow)
 ├── build_exe.ps1           rebuild script
 ├── pomodoro-timer.md       this document
+├── README.md               public landing page — see Published downloads
+├── LICENSE                 Apache-2.0, matching the Android port
 ├── VERSION                 current version number — see Version control
 ├── .gitignore              keeps dist\ and caches out of git
 ├── .gitattributes          stores every file byte for byte
+├── tools\
+│   └── shoot_screenshots.py  regenerates the README's screenshots
+├── docs\
+│   └── screenshots\        the four images README.md embeds
 └── dist\
     └── PomodoroTimer.exe   standalone build, ~10 MB — not in git, rebuild it
 ```
+
+The screenshots are **generated, not taken by hand**. `tools\shoot_screenshots.py`
+drives the real `PomodoroTimer` class in-process, setting each theme directly and
+capturing the window, so re-shooting them after a UI change is one command:
+
+```powershell
+py "D:\claude\Pomodoro timer\tools\shoot_screenshots.py"
+```
+
+Two things about it are deliberate and must survive any edit:
+
+- It stubs out `save_settings` and restores `%APPDATA%\PomodoroTimer\settings.json`
+  from a backup, because posing the app for a screenshot would otherwise overwrite
+  the user's own theme, zoom and window size.
+- **Every capture is clipped to one window's bounds.** An earlier version grabbed
+  the union of the main window and the prompt centred over it; the two did not
+  overlap, so the gap between them captured the desktop behind — wallpaper, icons
+  and a personal photo — in an image bound for a public repository. The prompt is
+  smaller than the main window in both dimensions, so frame 4 now places it wholly
+  inside and grabs the main window's rectangle alone. An assertion refuses to
+  capture if the prompt ever escapes those bounds; it fires rather than quietly
+  producing a leaky image, and it has already caught one regression.
 
 ## Using it
 
@@ -150,21 +178,31 @@ source. The permanent link to the newest build is:
 https://github.com/Micheal-Jiaming/pomodoro-timer/releases/latest/download/PomodoroTimer.exe
 ```
 
-`README.md` is the public landing page and is deliberately short; this document remains
-the real project record. Keep the two from drifting — if a feature or shortcut changes,
-the README's summary table needs the same edit.
+`README.md` is the public landing page: what the app is, the four screenshots, what each
+control does, the shortcut table and the SmartScreen warning to expect. It is written for
+somebody deciding whether to download the thing. **This document remains the record** —
+architecture, reasoning and verification status — and the README links here for it. Keep
+the two from drifting: a changed shortcut or preset needs the same edit in both, and the
+screenshots need regenerating whenever the interface moves.
+
+It is modelled on the Android port's README, at the user's request, down to the screenshot
+table and the Apache-2.0 licence; look there first if the two should stay consistent.
 
 **Publishing a later build.** Bump `VERSION`, commit and tag as usual, rebuild the exe,
 then attach it to a new release:
 
 ```powershell
-gh release create v1.0.9 "dist\PomodoroTimer.exe" --title "Pomodoro Timer v1.0.9" --notes "..."
+gh release create v1.1.0 "dist\PomodoroTimer.exe" --title "Pomodoro Timer v1.1.0" --notes "..."
 ```
 
 The `releases/latest/download/` URL follows the newest release automatically, so it never
-has to be updated anywhere it has been shared. Note that the released exe tracks the
-*source* it was built from: v1.0.7 is the binary, and 1.0.8 added only this section and
-the README, so no rebuild was needed for it.
+has to be updated anywhere it has been shared.
+
+Note that the released exe tracks the *source* it was built from, and the two numbers
+drift apart on purpose. **v1.0.7 is the published binary.** 1.0.8 added this section and
+the README; 1.0.9 added the screenshots, the licence and `tools\shoot_screenshots.py`.
+Neither touched `pomodoro_timer.py`, so neither needed a rebuild or a release of its own —
+publish a new binary only when the source behind it actually changed.
 
 ## On Android
 
@@ -217,7 +255,7 @@ This project is its own Git repository, with two remotes:
 
 | Remote | Points at |
 |---|---|
-| `origin` | `https://github.com/Micheal-Jiaming/pomodoro-timer` — private |
+| `origin` | `https://github.com/Micheal-Jiaming/pomodoro-timer` — **public** |
 | `mirror` | `D:\claude\repos\pomodoro-timer.git` — local bare copy |
 
 The repository name matches this document's filename (`pomodoro-timer`); the
@@ -226,7 +264,8 @@ absolute path. Authentication is the GitHub CLI acting as git's credential
 helper (`gh auth setup-git`), so pushes need no interactive prompt.
 
 Tracked: `pomodoro_timer.py`, `make_icon.py`, `build_exe.ps1`,
-`pomodoro_timer.ico`, and this document. Ignored: `dist\` and `__pycache__\` —
+`pomodoro_timer.ico`, `tools\shoot_screenshots.py`, `docs\screenshots\*.png`,
+`README.md`, `LICENSE`, and this document. Ignored: `dist\` and `__pycache__\` —
 the exe comes back from `build_exe.ps1`, and a stale one cannot do what newer
 source does. `.gitattributes` sets `* -text` so every file is stored and checked
 out byte for byte; Git for Windows is configured `core.autocrlf=true`
