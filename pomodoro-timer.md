@@ -12,7 +12,7 @@ self-contained `.exe`.
 
 ```
 D:\claude\Pomodoro timer\
-├── pomodoro_timer.py       source (single file, 1104 lines / ~42 KB)
+├── pomodoro_timer.py       source (single file, 1120 lines / ~43 KB)
 ├── pomodoro_timer.ico      app icon — a tomato with a countdown ring
 ├── make_icon.py            redraws the icon (needs Pillow)
 ├── build_exe.ps1           rebuild script
@@ -49,9 +49,13 @@ Two things about it are deliberate and must survive any edit:
   overlap, so the gap between them captured the desktop behind — wallpaper, icons
   and a personal photo — in an image bound for a public repository. The prompt is
   smaller than the main window in both dimensions, so frame 4 now places it wholly
-  inside and grabs the main window's rectangle alone. An assertion refuses to
-  capture if the prompt ever escapes those bounds; it fires rather than quietly
-  producing a leaky image, and it has already caught one regression.
+  inside and grabs the main window's rectangle alone. Two guards raise
+  `RuntimeError` if the prompt does not fit or has escaped those bounds, so a
+  mispositioned prompt aborts the run rather than quietly producing a leaky
+  image — one of them has already caught a real regression. They are explicit
+  `raise` statements rather than `assert`s **on purpose**: `python -O` strips
+  assertions, which would remove the only thing standing between a layout change
+  and a desktop capture in a public repository, and it would do so silently.
 
 ## Using it
 
@@ -468,8 +472,16 @@ should re-check rather than assume.
   returning zeros. That looks exactly like the app having crashed, and it briefly did;
   re-find the window after every keystroke rather than caching it.
 - `tools\shoot_screenshots.py` regenerates all four README images, and its containment
-  assertion fires rather than capturing desktop when the prompt is mispositioned — it
+  guards raise rather than capturing desktop when the prompt is mispositioned — they
   caught exactly that during development.
+
+**Note on re-running the screenshot tool.** It produces visually equivalent but
+byte-different images each time — roughly 8% of pixels in the theme frames, mostly the
+title bar's focused-versus-unfocused rendering, and more in frame 4 where the prompt's
+measured centring can shift a pixel or two. So a re-run always shows all four files as
+modified in `git status`. That is not a signal that anything changed: only commit
+regenerated images when the interface itself actually moved, or the repository collects
+churn that says nothing.
 
 Older notes, from 1.0.5, follow.
 

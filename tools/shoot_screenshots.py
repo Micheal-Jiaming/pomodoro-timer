@@ -102,18 +102,17 @@ def grab(box, name):
     print(f"  {name}  {image.width}x{image.height}")
 
 
-def main():
-    backup = None
-    if os.path.exists(pt.SETTINGS_PATH):
-        backup = pt.SETTINGS_PATH + ".shootbak"
-        shutil.copy2(pt.SETTINGS_PATH, backup)
-    pt.save_settings = lambda *args, **kwargs: None
-
+def shoot_all():
+    """Capture the four frames. Assumes save_settings is already stubbed out."""
     os.makedirs(OUT, exist_ok=True)
 
     root = tk.Tk()
     app = pt.PomodoroTimer(root)
-    app.set_scale(1.0)          # capture at 100%, not whatever zoom was saved
+    # force=True matters: set_scale returns early when the size lock is on, and
+    # the lock is restored from the user's own settings -- so without it, anyone
+    # who had locked their window would silently get screenshots at their saved
+    # zoom instead of 100%.
+    app.set_scale(1.0, force=True)
     root.update()
     root.geometry("+200+110")
     pump(root)
@@ -138,8 +137,9 @@ def main():
 
     left, top, right, bottom = visible_rect(popup)
     width, height = right - left, bottom - top
-    assert width <= main_box[2] - main_box[0] and height <= main_box[3] - main_box[1], \
-        "prompt no longer fits inside the main window; frame 4 would capture desktop"
+    if width > main_box[2] - main_box[0] or height > main_box[3] - main_box[1]:
+        raise RuntimeError(
+            "prompt no longer fits inside the main window; frame 4 would capture desktop")
 
     want_x = main_box[0] + (main_box[2] - main_box[0] - width) // 2
     want_y = main_box[1] + (main_box[3] - main_box[1] - height) // 2
@@ -147,16 +147,32 @@ def main():
     pump(popup, 500)
 
     final = visible_rect(popup)
-    assert (final[0] >= main_box[0] and final[1] >= main_box[1]
-            and final[2] <= main_box[2] and final[3] <= main_box[3]), \
-        f"prompt {final} escaped the main window {main_box}; refusing to capture desktop"
+    if not (final[0] >= main_box[0] and final[1] >= main_box[1]
+            and final[2] <= main_box[2] and final[3] <= main_box[3]):
+        raise RuntimeError(
+            f"prompt {final} escaped the main window {main_box}; "
+            "refusing to capture desktop")
     grab(main_box, "4-break-prompt.png")
 
     root.destroy()
-    if backup:
-        shutil.copy2(backup, pt.SETTINGS_PATH)
-        os.remove(backup)
-        print("settings.json restored")
+
+
+def main():
+    backup = None
+    if os.path.exists(pt.SETTINGS_PATH):
+        backup = pt.SETTINGS_PATH + ".shootbak"
+        shutil.copy2(pt.SETTINGS_PATH, backup)
+    pt.save_settings = lambda *args, **kwargs: None
+    try:
+        shoot_all()
+    finally:
+        # try/finally, not a plain tail call: the containment guards raise on a
+        # mispositioned prompt, and an aborted run must still put the user's
+        # settings back rather than leaving a stray .shootbak behind.
+        if backup:
+            shutil.copy2(backup, pt.SETTINGS_PATH)
+            os.remove(backup)
+            print("settings.json restored")
 
 
 if __name__ == "__main__":

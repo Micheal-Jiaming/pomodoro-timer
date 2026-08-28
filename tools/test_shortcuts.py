@@ -65,8 +65,18 @@ def main():
 
     print("\nthe upper-case keysym actually triggers the action:")
     if not focused:
+        # Bail out rather than running the three checks anyway: without focus all
+        # three fail, and one cause reporting four failures sends whoever reads
+        # the output hunting for four different problems.
         print("  SKIP  window could not take focus; key events cannot be delivered")
+        print("        (the binding checks above still ran and are conclusive)")
         failures.append("could not focus the test window")
+        root.destroy()
+        if backup:
+            shutil.copy2(backup, pt.SETTINGS_PATH)
+            os.remove(backup)
+        print(f"\nFAILED: {len(failures)} check(s)")
+        return 1
     before = app.theme
     root.event_generate("<Control-T>")
     root.update()
