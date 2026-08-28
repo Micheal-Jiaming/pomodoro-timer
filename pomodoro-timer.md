@@ -23,7 +23,8 @@ D:\claude\Pomodoro timer\
 ├── .gitignore              keeps dist\ and caches out of git
 ├── .gitattributes          stores every file byte for byte
 ├── tools\
-│   └── shoot_screenshots.py  regenerates the README's screenshots
+│   ├── shoot_screenshots.py  regenerates the README's screenshots
+│   └── test_shortcuts.py     regression test for the keyboard shortcuts
 ├── docs\
 │   └── screenshots\        the four images README.md embeds
 └── dist\
@@ -74,6 +75,10 @@ readable from the taskbar.
 **Shortcuts** — `Space` start/pause · `R` reset · `1` `2` `3` work presets ·
 `4` `5` `6` break presets · `Ctrl` `+` / `Ctrl` `-` bigger/smaller · `Ctrl` `0` back to
 100% · `Ctrl` + mouse wheel to zoom · `Ctrl` `L` lock the size · `Ctrl` `T` next theme.
+
+The letter shortcuts work **whatever the Caps Lock state**, and with Shift held. That is
+not automatic — see *Keyboard shortcuts and keysym case* below; it was broken until
+1.0.10.
 
 ### Backgrounds
 
@@ -264,8 +269,9 @@ absolute path. Authentication is the GitHub CLI acting as git's credential
 helper (`gh auth setup-git`), so pushes need no interactive prompt.
 
 Tracked: `pomodoro_timer.py`, `make_icon.py`, `build_exe.ps1`,
-`pomodoro_timer.ico`, `tools\shoot_screenshots.py`, `docs\screenshots\*.png`,
-`README.md`, `LICENSE`, and this document. Ignored: `dist\` and `__pycache__\` —
+`pomodoro_timer.ico`, `tools\shoot_screenshots.py`, `tools\test_shortcuts.py`,
+`docs\screenshots\*.png`, `README.md`, `LICENSE`, `VERSION`, `.gitignore`,
+`.gitattributes`, and this document. Ignored: `dist\` and `__pycache__\` —
 the exe comes back from `build_exe.ps1`, and a stale one cannot do what newer
 source does. `.gitattributes` sets `* -text` so every file is stored and checked
 out byte for byte; Git for Windows is configured `core.autocrlf=true`
@@ -402,10 +408,70 @@ git -C "D:\claude\Pomodoro timer" push mirror main --tags
   `AspectLock` holds the window to its proportions while it is being dragged.
 - Built and tested with Python 3.13 and PyInstaller 6.21 on Windows 11.
 
+### Keyboard shortcuts and keysym case
+
+Tk matches keysyms **literally**. `root.bind("<Control-t>", ...)` fires for keysym `t`
+and for nothing else, so when Caps Lock is on — or Shift is held — the OS delivers `T`,
+no binding matches, and the shortcut does nothing at all. There is no error and no
+warning; the key simply stops working, which makes it a genuinely hard fault to
+diagnose from the outside.
+
+Until 1.0.10 that silently disabled `Ctrl` `T`, `Ctrl` `L` and `R` for anyone typing
+with Caps Lock on. It was reported as "Ctrl+L and Ctrl+T don't work", and reproduced by
+sending real OS keystrokes with Caps Lock toggled: both worked with it off, both were
+dead with it on. Note the failure is invisible to `event_generate("<Control-t>")` in a
+test, because that names the keysym directly and so always matches — the bug only
+appears through the real keyboard, or by generating the upper-case keysym deliberately.
+
+`PomodoroTimer._bind` now binds both cases. It takes the part of the sequence after the
+last `-`, and if that is a single letter it registers the upper-case twin as well.
+Sequences whose final component is not a single letter — `<space>`, `<Control-0>`,
+`<Control-KP_Add>` — are bound once and untouched; the `rpartition("-")` split is what
+keeps `<space>` from being mangled into `<spacE>`, and `tools\test_shortcuts.py` asserts
+exactly that alongside the rest.
+
+Digits are unaffected by Caps Lock, so the preset keys `1`–`6` were never broken.
+
+**Run the regression test after touching `_bind` or `_bind_keys`:**
+
+```powershell
+py "D:\claude\Pomodoro timer\tools\test_shortcuts.py"
+```
+
+It fails 6 of its checks against the pre-1.0.10 code and passes on the fix, so it is
+guarding the real defect rather than merely restating the implementation.
+
 ## Verification status
 
-Where 1.0.5 stands, so a later session knows what it can rely on and what it should
-re-check rather than assume.
+Where **1.0.10** stands, so a later session knows what it can rely on and what it
+should re-check rather than assume.
+
+**Verified in 1.0.10.**
+
+- `Ctrl` `T`, `Ctrl` `L` and `R` fire with Caps Lock on, with it off, and with Shift
+  held. Checked by sending real OS keystrokes to a focused window and reading
+  `app.theme` / `app.locked` directly, not by inferring from pixels.
+- `tools\test_shortcuts.py` passes on the fix and fails 6 checks against the code
+  before it, so it genuinely covers the defect.
+- **The shipped `dist\PomodoroTimer.exe` was rebuilt and retested**, not just the
+  source: with Caps Lock switched on before launch, Ctrl+T, Ctrl+L, Ctrl+L again and
+  Ctrl+T all changed the window, and lock-then-unlock returned it to a byte-identical
+  screenshot. That check compares screenshots rather than reading the object, because
+  the exe is a separate process.
+
+  Two traps if this is ever re-run. Windows refuses `SetForegroundWindow` to a process
+  that is not already in the foreground, so keystrokes silently go to whatever window
+  *is* focused and every result comes back meaningless — focus the window with a real
+  mouse click on its title bar and assert `GetForegroundWindow` before sending keys.
+  And **the toplevel HWND does not survive a lock toggle**: changing `resizable` makes
+  Tk rebuild the window, so a cached handle goes stale and `GetWindowRect` starts
+  returning zeros. That looks exactly like the app having crashed, and it briefly did;
+  re-find the window after every keystroke rather than caching it.
+- `tools\shoot_screenshots.py` regenerates all four README images, and its containment
+  assertion fires rather than capturing desktop when the prompt is mispositioned — it
+  caught exactly that during development.
+
+Older notes, from 1.0.5, follow.
 
 **Verified.**
 

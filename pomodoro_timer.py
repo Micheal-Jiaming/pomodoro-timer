@@ -775,22 +775,38 @@ class PomodoroTimer:
             highlightthickness=0,
         )
 
+    def _bind(self, sequence, action):
+        """Bind `sequence`, plus its upper-case twin when it names a single letter.
+
+        Tk matches keysyms literally: `<Control-t>` fires for keysym `t` and for
+        nothing else. Caps Lock, or a held Shift, delivers `T` instead — so a
+        letter shortcut bound in one case only is silently dead for anyone with
+        Caps Lock on, with no error and no clue as to why. Binding both cases is
+        the only way to make it work whatever the keyboard state. Non-letter
+        sequences (`<space>`, `<Control-0>`, `<Control-KP_Add>`) are bound once.
+        """
+        self.root.bind(sequence, action)
+        modifiers, _, key = sequence[1:-1].rpartition("-")
+        if len(key) == 1 and key.isalpha():
+            prefix = modifiers + "-" if modifiers else ""
+            self.root.bind(f"<{prefix}{key.upper()}>", action)
+
     def _bind_keys(self):
-        self.root.bind("<space>", lambda e: self.toggle())
-        self.root.bind("<r>", lambda e: self.reset())
+        self._bind("<space>", lambda e: self.toggle())
+        self._bind("<r>", lambda e: self.reset())
         for i, minutes in enumerate(WORK_PRESETS, start=1):
-            self.root.bind(str(i), lambda e, m=minutes: self.set_duration(m, "work"))
+            self._bind(str(i), lambda e, m=minutes: self.set_duration(m, "work"))
         for i, minutes in enumerate(BREAK_PRESETS, start=len(WORK_PRESETS) + 1):
-            self.root.bind(str(i), lambda e, m=minutes: self.set_duration(m, "break"))
+            self._bind(str(i), lambda e, m=minutes: self.set_duration(m, "break"))
 
         for seq in ("<Control-plus>", "<Control-equal>", "<Control-KP_Add>"):
-            self.root.bind(seq, lambda e: self.nudge_scale(SCALE_STEP))
+            self._bind(seq, lambda e: self.nudge_scale(SCALE_STEP))
         for seq in ("<Control-minus>", "<Control-underscore>", "<Control-KP_Subtract>"):
-            self.root.bind(seq, lambda e: self.nudge_scale(-SCALE_STEP))
-        self.root.bind("<Control-0>", lambda e: self.set_scale(1.0))
-        self.root.bind("<Control-MouseWheel>", self._on_wheel)
-        self.root.bind("<Control-l>", lambda e: self.toggle_lock())
-        self.root.bind("<Control-t>", lambda e: self.cycle_theme())
+            self._bind(seq, lambda e: self.nudge_scale(-SCALE_STEP))
+        self._bind("<Control-0>", lambda e: self.set_scale(1.0))
+        self._bind("<Control-MouseWheel>", self._on_wheel)
+        self._bind("<Control-l>", lambda e: self.toggle_lock())
+        self._bind("<Control-t>", lambda e: self.cycle_theme())
 
     def _on_wheel(self, event):
         self.nudge_scale(SCALE_STEP if event.delta > 0 else -SCALE_STEP)
