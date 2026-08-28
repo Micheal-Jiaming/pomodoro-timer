@@ -139,6 +139,33 @@ double-click. Python, Tkinter, and the icon are bundled inside.
   code-signed → **More info → Run anyway**. Only a code-signing certificate removes this;
   zipping does not help.
 
+### Published downloads
+
+The repository is **public** at <https://github.com/Micheal-Jiaming/pomodoro-timer>, and
+built executables are attached to GitHub Releases rather than committed — which is how
+`dist\` stays ignored while a download still exists for people who won't build from
+source. The permanent link to the newest build is:
+
+```
+https://github.com/Micheal-Jiaming/pomodoro-timer/releases/latest/download/PomodoroTimer.exe
+```
+
+`README.md` is the public landing page and is deliberately short; this document remains
+the real project record. Keep the two from drifting — if a feature or shortcut changes,
+the README's summary table needs the same edit.
+
+**Publishing a later build.** Bump `VERSION`, commit and tag as usual, rebuild the exe,
+then attach it to a new release:
+
+```powershell
+gh release create v1.0.9 "dist\PomodoroTimer.exe" --title "Pomodoro Timer v1.0.9" --notes "..."
+```
+
+The `releases/latest/download/` URL follows the newest release automatically, so it never
+has to be updated anywhere it has been shared. Note that the released exe tracks the
+*source* it was built from: v1.0.7 is the binary, and 1.0.8 added only this section and
+the README, so no rebuild was needed for it.
+
 ## On Android
 
 There is a port at `D:\claude\Pomodoro timer Android` — Kotlin and Jetpack Compose, same
